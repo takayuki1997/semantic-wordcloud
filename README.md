@@ -35,6 +35,7 @@ python semantic_wordcloud.py input.txt -o output.png
 |-----------|-----------|------|
 | `-o, --output` | semantic_wordcloud.png | 出力ファイル名 |
 | `-n, --num-words` | 80 | 表示する単語数 |
+| `--custom-words` | None | カスタム単語ファイル |
 | `--cache-words` | 200 | キャッシュする単語数 |
 | `--iterations` | 500 | レイアウト反復回数 |
 | `--seed` | None | ランダムシード（再現性確保） |
@@ -51,7 +52,27 @@ python semantic_wordcloud.py input.txt -n 100 --iterations 800
 
 # 再現可能な結果を得る
 python semantic_wordcloud.py input.txt --seed 42
+
+# カスタム単語を追加して生成
+python semantic_wordcloud.py input.txt --custom-words custom_words.txt
+
+# カスタム単語のみでワードクラウド生成
+python semantic_wordcloud.py --custom-words custom_words.txt -o output.png
 ```
+
+### カスタム単語
+
+任意の単語を任意のサイズで追加できます。テキストから抽出した単語と混ぜて、PCA・配置を行います。
+
+**ファイル形式**（タブ区切り）:
+```
+# コメント行
+機械学習	100
+深層学習	80
+ニューラルネットワーク	60
+```
+
+サンプル: [custom_words_example.txt](custom_words_example.txt)
 
 ## 対応フォーマット
 

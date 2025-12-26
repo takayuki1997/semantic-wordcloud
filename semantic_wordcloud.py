@@ -176,6 +176,36 @@ def load_text(file_path: str) -> str:
     return path.read_text(encoding='utf-8')
 
 
+def load_custom_words(file_path: str) -> dict[str, int]:
+    """カスタム単語ファイルを読み込む（タブ区切り: 単語\t頻度）"""
+    custom_words = {}
+    path = Path(file_path)
+    if not path.exists():
+        print(f"警告: カスタム単語ファイルが見つかりません: {file_path}")
+        return custom_words
+
+    with open(path, 'r', encoding='utf-8') as f:
+        for line_num, line in enumerate(f, 1):
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split('\t')
+            if len(parts) >= 2:
+                word = parts[0].strip()
+                try:
+                    freq = int(parts[1].strip())
+                    custom_words[word] = freq
+                except ValueError:
+                    print(f"警告: 行{line_num}の頻度値が不正です: {line}")
+            elif len(parts) == 1:
+                # 頻度省略時はデフォルト値
+                custom_words[parts[0].strip()] = 50
+                print(f"情報: 行{line_num}の頻度をデフォルト(50)に設定: {parts[0].strip()}")
+
+    print(f"カスタム単語: {len(custom_words)}語")
+    return custom_words
+
+
 def get_embeddings(words: list[str], api_key: str = None, cache_file: str = "embeddings_cache.json") -> np.ndarray:
     """埋め込みを取得（単語単位キャッシュ対応）"""
 
@@ -431,25 +461,41 @@ def render_wordcloud(words: list[Word], output_path: str, canvas_width: float = 
 
 def main():
     parser = argparse.ArgumentParser(description='意味的ワードクラウド（キーワードのみ）')
-    parser.add_argument('input', help='入力ファイル')
+    parser.add_argument('input', nargs='?', help='入力ファイル（テキスト/Excel）')
     parser.add_argument('-o', '--output', default='semantic_wordcloud.png')
     parser.add_argument('-n', '--num-words', type=int, default=80)
+    parser.add_argument('--custom-words', help='カスタム単語ファイル（タブ区切り: 単語\\t頻度）')
     parser.add_argument('--cache-words', type=int, default=200, help='キャッシュする単語数（表示数より多めに）')
     parser.add_argument('--iterations', type=int, default=500)
     parser.add_argument('--seed', type=int, default=None, help='ランダムシード（再現性確保用）')
     parser.add_argument('--api-key', help='OpenAI APIキー')
     args = parser.parse_args()
 
+    if not args.input and not args.custom_words:
+        parser.error('入力ファイルまたは--custom-wordsを指定してください')
+
     if args.seed is not None:
         random.seed(args.seed)
         print(f"ランダムシード: {args.seed}")
 
-    print(f"ファイル読み込み中: {args.input}")
-    text = load_text(args.input)
-    extracted = extract_words(text)
-    word_freq = Counter(extracted)
+    # テキストから単語抽出
+    word_freq = Counter()
+    if args.input:
+        print(f"ファイル読み込み中: {args.input}")
+        text = load_text(args.input)
+        extracted = extract_words(text)
+        word_freq = Counter(extracted)
+        print(f"抽出: {len(extracted)}語, ユニーク: {len(word_freq)}語")
 
-    print(f"抽出: {len(extracted)}語, ユニーク: {len(word_freq)}語")
+    # カスタム単語をマージ
+    if args.custom_words:
+        custom = load_custom_words(args.custom_words)
+        for word, freq in custom.items():
+            word_freq[word] += freq  # 既存の場合は加算
+
+    if not word_freq:
+        print("エラー: 単語が見つかりません")
+        return
 
     # キャッシュ用に多めに取得
     cache_words = [w for w, _ in word_freq.most_common(args.cache_words)]

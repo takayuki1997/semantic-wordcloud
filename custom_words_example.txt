@@ -1,0 +1,15 @@
+# カスタム単語ファイルの例
+# 形式: 単語<TAB>頻度
+# 頻度が大きいほど文字が大きく表示されます
+#
+# 使い方:
+#   python semantic_wordcloud.py input.txt --custom-words custom_words.txt
+#   python semantic_wordcloud.py --custom-words custom_words.txt  # カスタムのみ
+
+# 例: 研究テーマのキーワード
+機械学習	100
+深層学習	80
+ニューラルネットワーク	70
+自然言語処理	60
+画像認識	50
+強化学習	40
