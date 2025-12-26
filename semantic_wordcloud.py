@@ -309,6 +309,9 @@ def force_directed_layout(
     repulsion_strength = 500
     damping = 0.9
 
+    # 反発力計算用の固定サイズ（配置を意味のみで決定するため）
+    fixed_word_size = 50  # 全単語を同じサイズとして扱う
+
     def compute_forces():
         forces = np.zeros((n, 2))
         for i in range(n):
@@ -329,7 +332,8 @@ def force_directed_layout(
                 forces[j, 0] -= spring_force * ux * scale_x
                 forces[j, 1] -= spring_force * uy * scale_y
 
-                min_sep = (words[i].width + words[j].width) / 2 + 5
+                # 反発力は固定サイズで計算（フォントサイズに依存しない）
+                min_sep = fixed_word_size + 5
                 actual_dist = np.sqrt(dx*dx + dy*dy) + 1e-6
                 if actual_dist < min_sep:
                     repulsion = repulsion_strength / (actual_dist * actual_dist + 1)
@@ -552,15 +556,24 @@ def main():
         import csv
         # 正規化値で降順ソート
         sorted_words = sorted(top_words, key=lambda w: word_ratios[w], reverse=True)
-        with open(args.export_words, 'w', encoding='utf-8', newline='') as f:
+        with open(args.export_words, 'w', encoding='utf-8-sig', newline='') as f:  # BOM付きUTF-8
             writer = csv.writer(f)
-            writer.writerow(['単語', '出現回数', '正規化値', 'フォントサイズ', 'カスタム'])
+            writer.writerow(['単語', '出現回数', '正規化値', 'フォントサイズ', 'カスタム', '頻度計算値', '差分'])
             for w in sorted_words:
                 freq = top_freqs[w]
                 ratio = word_ratios[w]
                 font_size = 12 + 28 * (ratio ** 0.5)
                 is_custom = 'Yes' if w in custom_ratios else ''
-                writer.writerow([w, freq, f'{ratio:.3f}', f'{font_size:.1f}', is_custom])
+                # 頻度から計算した場合の値
+                if max_freq > min_freq:
+                    freq_ratio = (freq - min_freq) / (max_freq - min_freq)
+                else:
+                    freq_ratio = 0.5
+                # 差分（カスタム値 - 頻度計算値）
+                diff = ratio - freq_ratio if w in custom_ratios else ''
+                freq_ratio_str = f'{freq_ratio:.3f}'
+                diff_str = f'{diff:+.3f}' if diff != '' else ''
+                writer.writerow([w, freq, f'{ratio:.3f}', f'{font_size:.1f}', is_custom, freq_ratio_str, diff_str])
         print(f"単語リストを出力しました: {args.export_words}")
 
     print("レイアウト実行中...")

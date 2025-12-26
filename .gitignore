@@ -31,3 +31,4 @@ OpenAI_API_Key.txt
 # キャッシュファイル
 embeddings_cache.json
 stopwords_cache.json
+words.csv
