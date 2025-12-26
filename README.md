@@ -73,7 +73,7 @@ python semantic_wordcloud.py input.txt --seed 42
 
 ## アルゴリズム
 
-詳細は [docs/algorithm.md](docs/algorithm.md) を参照してください。
+詳細は [docs/algorithm.md](docs/algorithm.md)（[PDF版](docs/algorithm.pdf)）を参照してください。
 
 ### 概要
 
