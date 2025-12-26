@@ -138,7 +138,60 @@ initial_coords = pca.fit_transform(embeddings)
 PCAは「できるだけ情報を保持しながら次元を減らす」ため、
 意味的に近い単語は2次元でも近くに配置されます。
 
-### 3.4 Force-directed Layout (力指向レイアウト)
+### 3.4 初期配置: PCA vs t-SNE
+
+本プログラムではPCAを初期配置に使用していますが、t-SNEも選択肢の一つです。
+
+#### 比較表
+
+| 項目 | PCA | t-SNE |
+|------|-----|-------|
+| 計算速度 | **高速** | 遅い（反復計算） |
+| 決定性 | **決定的**（毎回同じ結果） | 確率的（毎回異なる） |
+| 大域構造 | **保持される** | 失われやすい |
+| 局所構造 | 部分的に保持 | **よく保持される** |
+| クラスタ分離 | 緩やか | **明確に分離** |
+
+#### PCAを選んだ理由
+
+1. **Force-directedとの相性**
+   - PCAは大域的な構造を保持 → Force-directedで微調整
+   - t-SNEは既に局所最適化済み → Force-directedと役割が重複
+
+2. **決定性**
+   - PCAは同じ入力に対して常に同じ出力
+   - ランダムシードの管理が単純
+
+3. **計算効率**
+   - PCAは線形変換で高速
+   - t-SNEはO(N²)〜O(N log N)の反復計算
+
+#### t-SNEを使う場合のメリット・デメリット
+
+**メリット:**
+- クラスタがより明確に分離される
+- 局所的な類似関係がよく表現される
+
+**デメリット:**
+- 計算時間が長い
+- 大域的な距離関係が歪む（遠い点同士の距離が信頼できない）
+- Force-directedレイアウトの効果が薄れる（t-SNE自体が配置最適化）
+- perplexityパラメータの調整が必要
+
+#### コード例（t-SNEを使う場合）
+
+```python
+from sklearn.manifold import TSNE
+
+# PCAの代わりにt-SNEを使用
+# tsne = TSNE(n_components=2, perplexity=30, random_state=42)
+# initial_coords = tsne.fit_transform(embeddings)
+```
+
+**結論:** 本プログラムでは、Force-directedレイアウトが主役であり、
+初期配置は「おおまかな配置」を提供すれば十分なため、高速で決定的なPCAを採用しています。
+
+### 3.5 Force-directed Layout (力指向レイアウト)
 
 **物理シミュレーションによるグラフ配置アルゴリズム**
 
@@ -288,24 +341,45 @@ word.y = center_y + initial_coords[i, 1] * scale * scale_y
 
 #### Step 4: 力の計算と更新
 
-**3種類の力:**
+**3種類の力と計算次元（重要）:**
 
-1. **スプリング力 (attraction)**
+このアルゴリズムの核心は、**高次元の意味的距離を2次元配置で再現する**ことです。
+各力がどの次元で計算されるかを理解することが重要です。
+
+| 力 | 理想/目標 | 現在/実際 | 目的 |
+|---|---|---|---|
+| スプリング力 | **1536次元**（コサイン距離） | 2次元（キャンバス） | 意味的関係の再現 |
+| 反発力 | - | 2次元のみ | 視覚的重なり防止 |
+| 中心引力 | - | 2次元のみ | キャンバス内収束 |
+
+1. **スプリング力 (attraction)** ← 高次元→2次元マッピングの核心
    ```python
+   # 理想距離: 1536次元空間でのコサイン距離から算出
+   ideal_dist = ideal_distances[i, j]  # 高次元由来
+
+   # 現在距離: 2次元キャンバス上の距離
+   current_dist = np.sqrt(dx**2 + dy**2)  # 2次元
+
    spring_force = attraction_strength * (current_dist - ideal_dist)
    ```
    - 現在距離 > 理想距離 → 引き寄せる
    - 現在距離 < 理想距離 → 押し離す
+   - **意味的に近い単語は2Dでも近くに配置される**
 
-2. **反発力 (repulsion)**
+2. **反発力 (repulsion)** ← 純粋に2次元の視覚的問題
    ```python
+   # すべて2次元で計算
+   min_sep = (words[i].width + words[j].width) / 2 + 5  # 単語幅（2D）
+   actual_dist = np.sqrt(dx**2 + dy**2)  # 2D距離
+
    if actual_dist < min_sep:
        repulsion = repulsion_strength / (actual_dist² + 1)
    ```
    - 単語が重なりそうなとき発生
    - 距離が近いほど強い
+   - **意味的距離とは無関係、視覚的な配置のみ考慮**
 
-3. **中心への引力 (center force)**
+3. **中心への引力 (center force)** ← 2次元
    ```python
    center_force = 0.002 * dist_to_center
    ```
