@@ -25,3 +25,7 @@ Thumbs.db
 # 環境変数（APIキーを含む可能性）
 .env
 OpenAI_API_Key.txt
+
+# キャッシュファイル
+embeddings_cache.json
+stopwords_cache.json
