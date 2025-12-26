@@ -36,6 +36,7 @@ python semantic_wordcloud.py input.txt -o output.png
 | `-o, --output` | semantic_wordcloud.png | 出力ファイル名 |
 | `-n, --num-words` | 80 | 表示する単語数 |
 | `--custom-words` | None | カスタム単語ファイル |
+| `--export-words` | None | 単語リストをCSV出力 |
 | `--cache-words` | 200 | キャッシュする単語数 |
 | `--iterations` | 500 | レイアウト反復回数 |
 | `--seed` | None | ランダムシード（再現性確保） |
@@ -64,15 +65,30 @@ python semantic_wordcloud.py --custom-words custom_words.txt -o output.png
 
 任意の単語を任意のサイズで追加できます。テキストから抽出した単語と混ぜて、PCA・配置を行います。
 
-**ファイル形式**（タブ区切り）:
+**ファイル形式**（タブ区切り: 単語 + 正規化値）:
 ```
 # コメント行
-機械学習	100
-深層学習	80
-ニューラルネットワーク	60
+機械学習	1.0
+深層学習	0.8
+ニューラルネットワーク	0.6
 ```
 
+正規化値は 0.0〜1.0 の範囲で、文字サイズに対応:
+- `1.0` = 最大サイズ（40pt）
+- `0.5` = 中間サイズ（約32pt）
+- `0.0` = 最小サイズ（12pt）
+
 サンプル: [custom_words_example.txt](custom_words_example.txt)
+
+### 単語リストのエクスポート
+
+選択された単語をCSVに出力できます:
+
+```bash
+python semantic_wordcloud.py input.txt --export-words words.csv
+```
+
+出力には単語、出現回数、正規化値、フォントサイズが含まれます。
 
 ## 対応フォーマット
 

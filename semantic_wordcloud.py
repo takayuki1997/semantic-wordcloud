@@ -176,8 +176,13 @@ def load_text(file_path: str) -> str:
     return path.read_text(encoding='utf-8')
 
 
-def load_custom_words(file_path: str) -> dict[str, int]:
-    """カスタム単語ファイルを読み込む（タブ区切り: 単語\t頻度）"""
+def load_custom_words(file_path: str) -> dict[str, float]:
+    """カスタム単語ファイルを読み込む（タブ区切り: 単語\t正規化値）
+
+    正規化値は0.0〜1.0の範囲で、文字サイズに直接対応:
+      0.0 = 最小サイズ（12pt）
+      1.0 = 最大サイズ（40pt）
+    """
     custom_words = {}
     path = Path(file_path)
     if not path.exists():
@@ -193,14 +198,17 @@ def load_custom_words(file_path: str) -> dict[str, int]:
             if len(parts) >= 2:
                 word = parts[0].strip()
                 try:
-                    freq = int(parts[1].strip())
-                    custom_words[word] = freq
+                    ratio = float(parts[1].strip())
+                    if not 0.0 <= ratio <= 1.0:
+                        print(f"警告: 行{line_num}の値が範囲外です（0.0-1.0）: {ratio}")
+                        ratio = max(0.0, min(1.0, ratio))
+                    custom_words[word] = ratio
                 except ValueError:
-                    print(f"警告: 行{line_num}の頻度値が不正です: {line}")
+                    print(f"警告: 行{line_num}の値が不正です: {line}")
             elif len(parts) == 1:
-                # 頻度省略時はデフォルト値
-                custom_words[parts[0].strip()] = 50
-                print(f"情報: 行{line_num}の頻度をデフォルト(50)に設定: {parts[0].strip()}")
+                # 値省略時はデフォルト（中間サイズ）
+                custom_words[parts[0].strip()] = 0.5
+                print(f"情報: 行{line_num}の値をデフォルト(0.5)に設定: {parts[0].strip()}")
 
     print(f"カスタム単語: {len(custom_words)}語")
     return custom_words
@@ -465,6 +473,7 @@ def main():
     parser.add_argument('-o', '--output', default='semantic_wordcloud.png')
     parser.add_argument('-n', '--num-words', type=int, default=80)
     parser.add_argument('--custom-words', help='カスタム単語ファイル（タブ区切り: 単語\\t頻度）')
+    parser.add_argument('--export-words', help='選択された単語をCSVに出力')
     parser.add_argument('--cache-words', type=int, default=200, help='キャッシュする単語数（表示数より多めに）')
     parser.add_argument('--iterations', type=int, default=500)
     parser.add_argument('--seed', type=int, default=None, help='ランダムシード（再現性確保用）')
@@ -487,11 +496,13 @@ def main():
         word_freq = Counter(extracted)
         print(f"抽出: {len(extracted)}語, ユニーク: {len(word_freq)}語")
 
-    # カスタム単語をマージ
+    # カスタム単語を読み込み（正規化値を保持）
+    custom_ratios = {}
     if args.custom_words:
-        custom = load_custom_words(args.custom_words)
-        for word, freq in custom.items():
-            word_freq[word] += freq  # 既存の場合は加算
+        custom_ratios = load_custom_words(args.custom_words)
+        for word in custom_ratios:
+            if word not in word_freq:
+                word_freq[word] = 1  # 埋め込み取得用にカウントに追加
 
     if not word_freq:
         print("エラー: 単語が見つかりません")
@@ -503,26 +514,54 @@ def main():
         print(f"キャッシュ用に上位{len(cache_words)}単語の埋め込みを取得")
         get_embeddings(cache_words, args.api_key)
 
-    # 表示用は上位N語
-    top_words = [w for w, _ in word_freq.most_common(args.num_words)]
+    # 表示用単語を選択（カスタム単語は必ず含める）
+    # カスタム単語以外から上位N語を選択
+    num_from_extracted = args.num_words - len(custom_ratios)
+    extracted_words = [w for w, _ in word_freq.most_common() if w not in custom_ratios][:max(0, num_from_extracted)]
+    top_words = list(custom_ratios.keys()) + extracted_words
     top_freqs = {w: word_freq[w] for w in top_words}
 
-    print(f"表示: 上位{len(top_words)}単語")
+    print(f"表示: {len(top_words)}単語（カスタム: {len(custom_ratios)}語）")
 
     embeddings = get_embeddings(top_words, args.api_key)
 
-    max_freq = max(top_freqs.values())
-    min_freq = min(top_freqs.values())
+    # 抽出単語のみで正規化範囲を計算
+    extracted_freqs = [word_freq[w] for w in extracted_words] if extracted_words else [1]
+    max_freq = max(extracted_freqs)
+    min_freq = min(extracted_freqs)
 
     words = []
+    word_ratios = {}  # CSV出力用に保存
     for i, w in enumerate(top_words):
         freq = top_freqs[w]
-        if max_freq > min_freq:
-            ratio = (freq - min_freq) / (max_freq - min_freq)
-            font_size = 12 + 28 * (ratio ** 0.5)
+        if w in custom_ratios:
+            # カスタム単語: 正規化値を直接使用
+            ratio = custom_ratios[w]
         else:
-            font_size = 20
+            # 抽出単語: 頻度から正規化
+            if max_freq > min_freq:
+                ratio = (freq - min_freq) / (max_freq - min_freq)
+            else:
+                ratio = 0.5
+        font_size = 12 + 28 * (ratio ** 0.5)
+        word_ratios[w] = ratio
         words.append(Word(w, freq, font_size, embeddings[i]))
+
+    # 単語リストをCSV出力
+    if args.export_words:
+        import csv
+        # 正規化値で降順ソート
+        sorted_words = sorted(top_words, key=lambda w: word_ratios[w], reverse=True)
+        with open(args.export_words, 'w', encoding='utf-8', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['単語', '出現回数', '正規化値', 'フォントサイズ', 'カスタム'])
+            for w in sorted_words:
+                freq = top_freqs[w]
+                ratio = word_ratios[w]
+                font_size = 12 + 28 * (ratio ** 0.5)
+                is_custom = 'Yes' if w in custom_ratios else ''
+                writer.writerow([w, freq, f'{ratio:.3f}', f'{font_size:.1f}', is_custom])
+        print(f"単語リストを出力しました: {args.export_words}")
 
     print("レイアウト実行中...")
     words = force_directed_layout(words, canvas_width=900, canvas_height=700, iterations=args.iterations)
