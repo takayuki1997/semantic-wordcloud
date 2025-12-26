@@ -1,0 +1,27 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# 生成されたファイル
+*.png
+
+# データファイル
+*.xlsx
+*.xls
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# 環境変数（APIキーを含む可能性）
+.env
+OpenAI_API_Key.txt

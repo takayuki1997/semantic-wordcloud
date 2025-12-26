@@ -1,0 +1,8 @@
+openai
+janome
+pandas
+openpyxl
+numpy
+scikit-learn
+matplotlib
+adjustText
