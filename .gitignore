@@ -9,6 +9,7 @@ build/
 # 生成されたファイル
 *.png
 !examples/*.png
+!docs/algorithm.pdf
 
 # データファイル
 *.xlsx
