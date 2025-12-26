@@ -502,7 +502,7 @@ def main():
         custom_ratios = load_custom_words(args.custom_words)
         for word in custom_ratios:
             if word not in word_freq:
-                word_freq[word] = 1  # 埋め込み取得用にカウントに追加
+                word_freq[word] = 0  # テキストに出現しない場合は0
 
     if not word_freq:
         print("エラー: 単語が見つかりません")
