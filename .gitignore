@@ -8,6 +8,7 @@ build/
 
 # 生成されたファイル
 *.png
+!examples/*.png
 
 # データファイル
 *.xlsx
