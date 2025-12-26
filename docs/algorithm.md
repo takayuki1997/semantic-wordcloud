@@ -12,6 +12,7 @@
 4. [各処理の詳細](#4-各処理の詳細)
 5. [パラメータの影響](#5-パラメータの影響)
 6. [数学的背景](#6-数学的背景)
+7. [関連研究と本実装の位置づけ](#7-関連研究と本実装の位置づけ)
 
 ---
 
@@ -782,3 +783,73 @@ generate_semantic_wordcloud_v6.py
 - [Force-directed graph drawing (Wikipedia)](https://en.wikipedia.org/wiki/Force-directed_graph_drawing)
 - [stopwords-iso](https://github.com/stopwords-iso)
 - [Janome](https://mocobeta.github.io/janome/)
+
+---
+
+## 7. 関連研究と本実装の位置づけ
+
+### 7.1 既存の研究・実装
+
+意味的ワードクラウドは新しいアイデアではなく、いくつかの先行研究・実装が存在します。
+
+#### 学術研究
+
+| 研究 | 手法 |
+|------|------|
+| [Semantic word cloud generation based on word embeddings (2016)](https://ieeexplore.ieee.org/document/7465278/) | Word2Vecで意味的距離を計算、グラフベースのレイアウト |
+| [Semantic Word Clouds with t-SNE](https://www.researchgate.net/publication/319101561) | t-SNEで意味的配置を生成 |
+| [ReCloud](https://www.semanticscholar.org/paper/ReCloud) | 文法的依存関係からセマンティックグラフを構築、Force-directedレイアウト |
+
+#### 既存ツール・実装
+
+| プロジェクト | 特徴 |
+|-------------|------|
+| [Arizona大学 Semantic Word Cloud](http://wordcloud.cs.arizona.edu/) | Webツール、複数アルゴリズム対応 |
+| [nlp-chula/swordcloud](https://github.com/nlp-chula/swordcloud) | Python、タイ語NLP研究グループ |
+| [ttavni/SemanticWordClouds](https://github.com/ttavni/SemanticWordClouds) | PKE + 事前学習埋め込み |
+| [WordCloud.jl](https://github.com/guo-yong-zhi/WordCloud.jl) | Julia、t-SNE対応 |
+
+### 7.2 本実装の特徴
+
+#### 既存手法との共通点
+
+- 埋め込みベクトルによる意味的距離の計算
+- Force-directedレイアウト
+- PCAによる初期配置・色付け
+
+#### 本実装の独自の組み合わせ
+
+| 要素 | 本実装 | 一般的な既存実装 |
+|------|--------|-----------------|
+| 埋め込み | OpenAI text-embedding-3-small | Word2Vec, GloVe, FastText |
+| ベクトル次元 | 1536次元 | 100-300次元 |
+| 距離制約 | **高次元コサイン距離を直接使用** | 2D投影後の距離 |
+| レイアウト形状 | 異方性（楕円形）対応 | 多くは正方形のみ |
+| 言語対応 | 日本語（Janome + stopwords-iso） | 英語中心が多い |
+
+#### 技術的な差別化ポイント
+
+1. **OpenAI Embeddings の利用**
+   - 最新の大規模言語モデルベースの埋め込み
+   - 1536次元の高密度な意味表現
+   - 既存実装の多くはWord2Vec/GloVe（100-300次元）
+
+2. **高次元距離の直接利用**
+   - 多くの実装: 先にt-SNE/PCAで2Dに落としてから配置
+   - 本実装: 高次元のコサイン距離を理想距離として保持し、Force-directedで2D再現
+   - これにより、次元削減による情報損失を最小化
+
+3. **異方性Force-directed**
+   - 横長・縦長など任意のアスペクト比に対応
+   - 多くの実装は正方形レイアウトのみ
+
+4. **日本語ネイティブ対応**
+   - Janomeによる形態素解析
+   - stopwords-isoの日本語ストップワード
+   - 英語中心の既存ツールとの差別化
+
+### 7.3 結論
+
+個々の技術（埋め込み、Force-directed、PCA）は既存のものですが、
+「OpenAI Embeddings + 高次元距離制約 + 異方性レイアウト + 日本語対応」
+という組み合わせは、調査した範囲では前例が見つかりませんでした。
