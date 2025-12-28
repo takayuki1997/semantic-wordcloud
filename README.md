@@ -2,6 +2,13 @@
 
 意味的に類似した単語を近くに配置するワードクラウド生成ツール
 
+| 項目 | 内容 |
+|------|------|
+| 作成者 | 荻 多加之 |
+| 作成支援 | Claude Code (Anthropic) |
+| バージョン | 1.1 |
+| 最終更新 | 2025-12-28 |
+
 ![サンプル出力](examples/sample_output.png)
 
 ## 特徴
@@ -17,6 +24,8 @@
 ```bash
 git clone https://github.com/takayuki1997/semantic-wordcloud.git
 cd semantic-wordcloud
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -25,9 +34,12 @@ pip install -r requirements.txt
 ### 基本
 
 ```bash
+source venv/bin/activate
 export OPENAI_API_KEY="your-api-key"
 python semantic_wordcloud.py input.txt -o output.png
 ```
+
+画像と同名のCSVファイル（単語リスト）も自動出力されます。
 
 ### オプション
 
@@ -36,7 +48,7 @@ python semantic_wordcloud.py input.txt -o output.png
 | `-o, --output` | semantic_wordcloud.png | 出力ファイル名 |
 | `-n, --num-words` | 80 | 表示する単語数 |
 | `--custom-words` | None | カスタム単語ファイル |
-| `--export-words` | None | 単語リストをCSV出力 |
+| `--export-words` | 自動 | 単語リストCSVの出力先（デフォルトは画像と同名） |
 | `--cache-words` | 200 | キャッシュする単語数 |
 | `--iterations` | 500 | レイアウト反復回数 |
 | `--seed` | None | ランダムシード（再現性確保） |
@@ -82,13 +94,14 @@ python semantic_wordcloud.py --custom-words custom_words.txt -o output.png
 
 ### 単語リストのエクスポート
 
-選択された単語をCSVに出力できます:
+画像と同名のCSVファイルが自動出力されます（例: `WordCloud_20251228.png` → `WordCloud_20251228.csv`）。
 
+出力先を指定したい場合:
 ```bash
 python semantic_wordcloud.py input.txt --export-words words.csv
 ```
 
-出力には単語、出現回数、正規化値、フォントサイズが含まれます。
+CSVには単語、出現回数、正規化値、フォントサイズ、カスタム有無、頻度計算値、差分が含まれます。
 
 ## 対応フォーマット
 

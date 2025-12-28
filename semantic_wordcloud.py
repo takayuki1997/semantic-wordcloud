@@ -299,14 +299,18 @@ def force_directed_layout(
         word.y = center_y + initial_coords[i, 1] * scale * scale_y
         word.vx = 0
         word.vy = 0
-        word.rotation = random.choice([0]*9 + [90])
+        # 5文字以上の単語は回転させない（長い単語の回転はレイアウトを崩しやすい）
+        if len(word.text) >= 5:
+            word.rotation = 0
+        else:
+            word.rotation = random.choice([0]*9 + [90])
 
     # Force-directed simulation
     if verbose:
         print("  Force-directed simulation...")
 
     attraction_strength = 0.01
-    repulsion_strength = 500
+    repulsion_strength = 700
     damping = 0.9
 
     # 反発力計算用の固定サイズ（配置を意味のみで決定するため）
@@ -400,15 +404,15 @@ def force_directed_layout(
         word.x, word.y = best_positions[i]
 
     # 最終重なり解消
-    for _ in range(100):
+    for _ in range(150):
         improved = False
         for i in range(n):
             for j in range(i + 1, n):
-                if words[i].overlaps(words[j], padding=2):
+                if words[i].overlaps(words[j], padding=3):
                     dx = words[i].x - words[j].x
                     dy = words[i].y - words[j].y
                     dist = max(np.sqrt(dx*dx + dy*dy), 0.1)
-                    nudge = 2.0
+                    nudge = 3.5
                     words[i].x += (dx / dist) * nudge
                     words[i].y += (dy / dist) * nudge
                     words[j].x -= (dx / dist) * nudge
@@ -551,30 +555,31 @@ def main():
         word_ratios[w] = ratio
         words.append(Word(w, freq, font_size, embeddings[i]))
 
-    # 単語リストをCSV出力
-    if args.export_words:
-        import csv
-        # 正規化値で降順ソート
-        sorted_words = sorted(top_words, key=lambda w: word_ratios[w], reverse=True)
-        with open(args.export_words, 'w', encoding='utf-8-sig', newline='') as f:  # BOM付きUTF-8
-            writer = csv.writer(f)
-            writer.writerow(['単語', '出現回数', '正規化値', 'フォントサイズ', 'カスタム', '頻度計算値', '差分'])
-            for w in sorted_words:
-                freq = top_freqs[w]
-                ratio = word_ratios[w]
-                font_size = 12 + 28 * (ratio ** 0.5)
-                is_custom = 'Yes' if w in custom_ratios else ''
-                # 頻度から計算した場合の値
-                if max_freq > min_freq:
-                    freq_ratio = (freq - min_freq) / (max_freq - min_freq)
-                else:
-                    freq_ratio = 0.5
-                # 差分（カスタム値 - 頻度計算値）
-                diff = ratio - freq_ratio if w in custom_ratios else ''
-                freq_ratio_str = f'{freq_ratio:.3f}'
-                diff_str = f'{diff:+.3f}' if diff != '' else ''
-                writer.writerow([w, freq, f'{ratio:.3f}', f'{font_size:.1f}', is_custom, freq_ratio_str, diff_str])
-        print(f"単語リストを出力しました: {args.export_words}")
+    # 単語リストをCSV出力（画像と同じベース名で自動出力）
+    import csv
+    import os
+    csv_path = args.export_words if args.export_words else os.path.splitext(args.output)[0] + '.csv'
+    # 正規化値で降順ソート
+    sorted_words = sorted(top_words, key=lambda w: word_ratios[w], reverse=True)
+    with open(csv_path, 'w', encoding='utf-8-sig', newline='') as f:  # BOM付きUTF-8
+        writer = csv.writer(f)
+        writer.writerow(['単語', '出現回数', '正規化値', 'フォントサイズ', 'カスタム', '頻度計算値', '差分'])
+        for w in sorted_words:
+            freq = top_freqs[w]
+            ratio = word_ratios[w]
+            font_size = 12 + 28 * (ratio ** 0.5)
+            is_custom = 'Yes' if w in custom_ratios else ''
+            # 頻度から計算した場合の値
+            if max_freq > min_freq:
+                freq_ratio = (freq - min_freq) / (max_freq - min_freq)
+            else:
+                freq_ratio = 0.5
+            # 差分（カスタム値 - 頻度計算値）
+            diff = ratio - freq_ratio if w in custom_ratios else ''
+            freq_ratio_str = f'{freq_ratio:.3f}'
+            diff_str = f'{diff:+.3f}' if diff != '' else ''
+            writer.writerow([w, freq, f'{ratio:.3f}', f'{font_size:.1f}', is_custom, freq_ratio_str, diff_str])
+    print(f"単語リストを出力しました: {csv_path}")
 
     print("レイアウト実行中...")
     words = force_directed_layout(words, canvas_width=900, canvas_height=700, iterations=args.iterations)

@@ -1,18 +1,14 @@
 # 意味的ワードクラウド (Semantic Word Cloud) アルゴリズム解説
 
-このドキュメントでは、`generate_semantic_wordcloud_v6.py` の動作原理を詳しく解説します。
+| 項目 | 内容 |
+|------|------|
+| 作成者 | 荻 多加之 |
+| 作成支援 | Claude Code (Anthropic) |
+| 作成日 | 2024-12-25 |
+| 最終更新 | 2025-12-28 |
+| バージョン | 1.1 |
 
----
-
-## 目次
-
-1. [概要](#1-概要)
-2. [処理フロー](#2-処理フロー)
-3. [キーコンセプト](#3-キーコンセプト)
-4. [各処理の詳細](#4-各処理の詳細)
-5. [パラメータの影響](#5-パラメータの影響)
-6. [数学的背景](#6-数学的背景)
-7. [関連研究と本実装の位置づけ](#7-関連研究と本実装の位置づけ)
+このドキュメントでは、`semantic_wordcloud.py` の動作原理を詳しく解説します。
 
 ---
 
@@ -639,8 +635,16 @@ def compute_semantic_colors(words: list[Word]) -> list[tuple]:
 ```python
 # force_directed_layout 内
 attraction_strength = 0.01   # スプリングの強さ
-repulsion_strength = 500     # 反発力の強さ
+repulsion_strength = 700     # 反発力の強さ
 damping = 0.9                # 減衰係数
+
+# 重なり解消パラメータ
+padding = 3                  # 重なり検出のパディング
+nudge = 3.5                  # 重なり解消時の移動量
+overlap_iterations = 150     # 重なり解消の反復回数
+
+# 回転制限
+# 5文字以上の単語は回転させない（長い単語の回転はレイアウトを崩しやすい）
 
 # キャンバス
 canvas_width = 900
@@ -657,7 +661,9 @@ font_size = 12 + 28 * (ratio ** 0.5)  # 12〜40の範囲
 | 単語が散らばりすぎ | `attraction_strength` を上げる |
 | 単語が密集しすぎ | `repulsion_strength` を上げる |
 | 配置が安定しない | `iterations` を増やす |
-| 重なりが多い | `repulsion_strength` を上げる or `ideal_scale` を下げる |
+| 重なりが多い | `repulsion_strength`、`padding`、`nudge` を上げる |
+| 隙間が多すぎる | `repulsion_strength`、`padding`、`nudge` を下げる |
+| 長い単語の回転で崩れる | 回転制限の文字数を調整 |
 
 ---
 
@@ -739,7 +745,7 @@ scale_x × scale_y = 1 (面積保存)
 ## 付録: コード構造
 
 ```
-generate_semantic_wordcloud_v6.py
+semantic_wordcloud.py
 │
 ├── 定数・設定
 │   ├── FONT_PATHS
