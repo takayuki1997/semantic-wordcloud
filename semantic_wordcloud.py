@@ -7,6 +7,7 @@ import random
 import json
 import hashlib
 import urllib.request
+from datetime import datetime
 from pathlib import Path
 from collections import Counter
 
@@ -494,7 +495,8 @@ def render_wordcloud(words: list[Word], output_path: str, canvas_width: float = 
 def main():
     parser = argparse.ArgumentParser(description='意味的ワードクラウド（キーワードのみ）')
     parser.add_argument('input', nargs='?', help='入力ファイル（テキスト/Excel）')
-    parser.add_argument('-o', '--output', default='semantic_wordcloud.png')
+    default_output = f"WordCloud_{datetime.now().strftime('%Y%m%d')}.png"
+    parser.add_argument('-o', '--output', default=default_output)
     parser.add_argument('-n', '--num-words', type=int, default=80)
     parser.add_argument('--custom-words', help='カスタム単語ファイル（タブ区切り: 単語\\t頻度）')
     parser.add_argument('--export-words', help='選択された単語をCSVに出力')
