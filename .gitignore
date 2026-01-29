@@ -6,8 +6,11 @@ __pycache__/
 dist/
 build/
 
-# 生成されたファイル（画像はサンプルとして含める）
+# 生成されたファイル
 *.csv
+*.png
+*.svg
+!examples/*.png
 !docs/algorithm.pdf
 
 # 単語リスト（大学固有の情報を含むため除外）

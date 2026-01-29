@@ -95,6 +95,7 @@ python docs/generate_pdf.py
 - `stopwords_cache.json` - ストップワードキャッシュ
 
 以下のファイルはコミットしてよい:
-- `WordCloud_*.png`, `WordCloud_*.svg` - 出力画像（サンプル）
 - `custom_words_example.txt` - カスタム単語のサンプル
 - `stopwords_example.txt` - 除外単語のサンプル
+
+※ サンプル画像は `examples/` に既存のものがあるため、新規画像はアップロード不要
