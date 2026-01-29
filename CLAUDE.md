@@ -44,8 +44,9 @@ python semantic_wordcloud.py "研究内容と研究キーワード.xlsx" --custo
 ## 出力ファイル
 
 実行すると以下が生成されます:
-- `WordCloud_YYYYMMDD.png` - ワードクラウド画像
-- `WordCloud_YYYYMMDD.csv` - 単語リスト（自動出力）
+- `WordCloud_YYYYMMDD.png` - ワードクラウド画像（PNG）
+- `WordCloud_YYYYMMDD.svg` - ワードクラウド画像（SVG、フォントはパスに変換済み）
+- `WordCloud_YYYYMMDD.csv` - 単語リスト（自動出力、末尾に除外単語も記載）
 
 ## レイアウトパラメータ
 
@@ -53,6 +54,8 @@ python semantic_wordcloud.py "研究内容と研究キーワード.xlsx" --custo
 
 | パラメータ | 現在値 | 説明 |
 |-----------|--------|------|
+| `canvas_width` | 1200 | キャンバス幅 |
+| `canvas_height` | 900 | キャンバス高さ |
 | `repulsion_strength` | 700 | 単語間の反発力 |
 | `padding` | 3 | 重なり検出のパディング |
 | `nudge` | 3.5 | 重なり解消時の移動量 |
@@ -65,6 +68,15 @@ OpenAI APIキーは以下のいずれかで設定:
 - ファイル: `OpenAI_API_Key.txt`
 - コマンドライン: `--api-key "..."`
 
+## ドキュメント更新
+
+`docs/algorithm.md` を変更した場合は、PDFも再生成すること:
+
+```bash
+source venv/bin/activate
+python docs/generate_pdf.py
+```
+
 ## GitHub
 
 - **リポジトリ**: https://github.com/takayuki1997/semantic-wordcloud
@@ -72,12 +84,17 @@ OpenAI APIキーは以下のいずれかで設定:
 
 ### コミット時の注意
 
-以下のファイルはコミットしない:
-- `OpenAI_API_Key.txt` - APIキー（.gitignoreに含まれている）
+以下のファイルはコミットしない（.gitignoreに含まれている）:
+- `OpenAI_API_Key.txt` - APIキー
 - `venv/` - 仮想環境
 - `*.pyc`, `__pycache__/` - Pythonキャッシュ
+- `custom_words.txt` - カスタム単語（大学固有の情報を含む）
+- `stopwords.txt` - 除外単語（大学固有の情報を含む）
+- `*.csv` - 出力CSV
+- `embeddings_cache.json` - 埋め込みキャッシュ
+- `stopwords_cache.json` - ストップワードキャッシュ
 
 以下のファイルはコミットしてよい:
-- `embeddings_cache.json` - 埋め込みキャッシュ（API節約のため共有可）
-- `stopwords_cache.json` - ストップワードキャッシュ
-- `WordCloud_*.png`, `WordCloud_*.csv` - 出力例
+- `WordCloud_*.png`, `WordCloud_*.svg` - 出力画像（サンプル）
+- `custom_words_example.txt` - カスタム単語のサンプル
+- `stopwords_example.txt` - 除外単語のサンプル

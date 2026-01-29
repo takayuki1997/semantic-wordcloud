@@ -6,8 +6,8 @@
 |------|------|
 | 作成者 | 荻 多加之 |
 | 作成支援 | Claude Code (Anthropic) |
-| バージョン | 1.1 |
-| 最終更新 | 2025-12-28 |
+| バージョン | 1.2 |
+| 最終更新 | 2025-01-29 |
 
 ![サンプル出力](examples/sample_output.png)
 
@@ -39,7 +39,7 @@ export OPENAI_API_KEY="your-api-key"
 python semantic_wordcloud.py input.txt -o output.png
 ```
 
-画像と同名のCSVファイル（単語リスト）も自動出力されます。
+画像と同名のCSVファイル（単語リスト）およびSVGファイルも自動出力されます。
 
 ### オプション
 
@@ -102,11 +102,22 @@ python semantic_wordcloud.py input.txt --export-words words.csv
 ```
 
 CSVには単語、出現回数、正規化値、フォントサイズ、カスタム有無、頻度計算値、差分が含まれます。
+また、CSVの末尾にはカスタムストップワード（除外単語）が `exclude` 付きで記載されます。
 
 ## 対応フォーマット
 
+### 入力
+
 - テキストファイル (.txt)
 - Excel ファイル (.xlsx, .xls)
+
+### 出力
+
+- PNG画像（ラスター形式）
+- SVG画像（ベクター形式、フォントはパスに変換済み）
+- CSVファイル（単語リスト）
+
+SVGはPowerPoint/Wordに直接挿入でき、拡大縮小しても劣化しません。
 
 ## カスタマイズ
 

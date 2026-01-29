@@ -17,8 +17,12 @@ from janome.tokenizer import Tokenizer
 from sklearn.decomposition import PCA
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
+import matplotlib
 from matplotlib import font_manager
 import colorsys
+
+# SVG出力時にフォントをパス（アウトライン）に変換
+matplotlib.rcParams['svg.fonttype'] = 'path'
 
 
 FONT_PATHS = [
@@ -470,8 +474,20 @@ def render_wordcloud(words: list[Word], output_path: str, canvas_width: float = 
                 ha='center', va='center', rotation=word.rotation, alpha=0.9)
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
-    print(f"保存しました: {output_path}")
+
+    # 拡張子を除いたベース名を取得
+    base_path = os.path.splitext(output_path)[0]
+
+    # PNG出力
+    png_path = base_path + '.png'
+    plt.savefig(png_path, dpi=150, bbox_inches='tight', facecolor='white')
+    print(f"保存しました: {png_path}")
+
+    # SVG出力（フォントはパスに変換済み）
+    svg_path = base_path + '.svg'
+    plt.savefig(svg_path, bbox_inches='tight', facecolor='white')
+    print(f"保存しました: {svg_path}")
+
     plt.close()
 
 
@@ -579,12 +595,25 @@ def main():
             freq_ratio_str = f'{freq_ratio:.3f}'
             diff_str = f'{diff:+.3f}' if diff != '' else ''
             writer.writerow([w, freq, f'{ratio:.3f}', f'{font_size:.1f}', is_custom, freq_ratio_str, diff_str])
+
+        # カスタムストップワード（除外単語）を追加
+        custom_stopwords_file = Path("stopwords.txt")
+        if custom_stopwords_file.exists():
+            writer.writerow([])  # 空行
+            excluded_words = []
+            with open(custom_stopwords_file, 'r', encoding='utf-8') as sf:
+                for line in sf:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        excluded_words.append(line)
+            for w in excluded_words:
+                writer.writerow([w, '', '', '', 'exclude', '', ''])
     print(f"単語リストを出力しました: {csv_path}")
 
     print("レイアウト実行中...")
-    words = force_directed_layout(words, canvas_width=900, canvas_height=700, iterations=args.iterations)
+    words = force_directed_layout(words, canvas_width=1200, canvas_height=900, iterations=args.iterations)
 
-    render_wordcloud(words, args.output, canvas_width=900, canvas_height=700)
+    render_wordcloud(words, args.output, canvas_width=1200, canvas_height=900)
 
 
 if __name__ == '__main__':

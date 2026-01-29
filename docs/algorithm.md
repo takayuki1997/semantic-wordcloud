@@ -5,8 +5,8 @@
 | 作成者 | 荻 多加之 |
 | 作成支援 | Claude Code (Anthropic) |
 | 作成日 | 2024-12-25 |
-| 最終更新 | 2025-12-28 |
-| バージョン | 1.1 |
+| 最終更新 | 2025-01-29 |
+| バージョン | 1.2 |
 
 このドキュメントでは、`semantic_wordcloud.py` の動作原理を詳しく解説します。
 
@@ -351,9 +351,9 @@ def force_directed_layout(words, canvas_width, canvas_height, iterations, verbos
 #### Step 1: 異方性スケールの計算
 
 ```python
-aspect_ratio = canvas_width / canvas_height  # 例: 900/700 = 1.286
-scale_x = np.sqrt(aspect_ratio)              # 例: 1.134
-scale_y = 1.0 / np.sqrt(aspect_ratio)        # 例: 0.882
+aspect_ratio = canvas_width / canvas_height  # 例: 1200/900 = 1.333
+scale_x = np.sqrt(aspect_ratio)              # 例: 1.155
+scale_y = 1.0 / np.sqrt(aspect_ratio)        # 例: 0.866
 ```
 
 これにより、正方形ではなく楕円形のレイアウトになります。
@@ -647,8 +647,8 @@ overlap_iterations = 150     # 重なり解消の反復回数
 # 5文字以上の単語は回転させない（長い単語の回転はレイアウトを崩しやすい）
 
 # キャンバス
-canvas_width = 900
-canvas_height = 700
+canvas_width = 1200
+canvas_height = 900
 
 # フォントサイズ
 font_size = 12 + 28 * (ratio ** 0.5)  # 12〜40の範囲
@@ -726,10 +726,10 @@ x(t+1) = x(t) + v(t+1)
 ### 6.4 異方性スケールの意味
 
 ```
-aspect_ratio = width / height = 900 / 700 ≈ 1.286
+aspect_ratio = width / height = 1200 / 900 ≈ 1.333
 
-scale_x = √(aspect_ratio) ≈ 1.134
-scale_y = 1 / √(aspect_ratio) ≈ 0.882
+scale_x = √(aspect_ratio) ≈ 1.155
+scale_y = 1 / √(aspect_ratio) ≈ 0.866
 
 scale_x × scale_y = 1 (面積保存)
 ```

@@ -6,10 +6,13 @@ __pycache__/
 dist/
 build/
 
-# 生成されたファイル
-*.png
-!examples/*.png
+# 生成されたファイル（画像はサンプルとして含める）
+*.csv
 !docs/algorithm.pdf
+
+# 単語リスト（大学固有の情報を含むため除外）
+custom_words.txt
+stopwords.txt
 
 # データファイル
 *.xlsx
