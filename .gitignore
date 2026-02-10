@@ -38,3 +38,4 @@ OpenAI_API_Key.txt
 embeddings_cache.json
 stopwords_cache.json
 words.csv
+archive/
