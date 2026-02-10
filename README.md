@@ -6,8 +6,8 @@
 |------|------|
 | 作成者 | 荻 多加之 |
 | 作成支援 | Claude Code (Anthropic) |
-| バージョン | 1.2 |
-| 最終更新 | 2025-01-29 |
+| バージョン | 1.3 |
+| 最終更新 | 2026-02-10 |
 
 ![サンプル出力](examples/sample_output.png)
 
@@ -45,13 +45,14 @@ python semantic_wordcloud.py input.txt -o output.png
 
 | オプション | デフォルト | 説明 |
 |-----------|-----------|------|
-| `-o, --output` | semantic_wordcloud.png | 出力ファイル名 |
+| `-o, --output` | WordCloud_YYYYMMDD.png | 出力ファイル名 |
 | `-n, --num-words` | 80 | 表示する単語数 |
 | `--custom-words` | None | カスタム単語ファイル |
 | `--export-words` | 自動 | 単語リストCSVの出力先（デフォルトは画像と同名） |
 | `--cache-words` | 200 | キャッシュする単語数 |
 | `--iterations` | 500 | レイアウト反復回数 |
 | `--seed` | None | ランダムシード（再現性確保） |
+| `--layout-method` | pca | 初期配置の方法（pca/mds） |
 | `--api-key` | 環境変数 | OpenAI APIキー |
 
 ### 例
@@ -101,8 +102,18 @@ python semantic_wordcloud.py --custom-words custom_words.txt -o output.png
 python semantic_wordcloud.py input.txt --export-words words.csv
 ```
 
-CSVには単語、出現回数、正規化値、フォントサイズ、カスタム有無、頻度計算値、差分が含まれます。
-また、CSVの末尾にはカスタムストップワード（除外単語）が `exclude` 付きで記載されます。
+CSVには以下の情報が含まれます：
+
+**メタ情報（先頭部分）:**
+- 出力日時、シード番号、入力ファイル名
+- 単語数、レイアウト方法、反復回数、最終重なり数
+
+**単語データ:**
+- 単語、出現回数、正規化値、フォントサイズ、カスタム有無
+- X座標、Y座標、RGB値（配置と色の再現用）
+
+**除外単語:**
+- CSVの末尾にカスタムストップワードが `exclude` 付きで記載
 
 ## 対応フォーマット
 

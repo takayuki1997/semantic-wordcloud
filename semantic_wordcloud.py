@@ -16,6 +16,7 @@ import pandas as pd
 from openai import OpenAI
 from janome.tokenizer import Tokenizer
 from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
 from sklearn.metrics.pairwise import cosine_similarity
 import matplotlib.pyplot as plt
 import matplotlib
@@ -266,9 +267,15 @@ def force_directed_layout(
     canvas_width: float = 800,
     canvas_height: float = 600,
     iterations: int = 500,
-    verbose: bool = True
+    verbose: bool = True,
+    layout_method: str = 'pca',
+    seed: int = None,
+    pca_coords: np.ndarray = None
 ):
-    """高次元距離を制約として使用するForce-directed layout（異方性対応）"""
+    """高次元距離を制約として使用するForce-directed layout（異方性対応）
+
+    pca_coords: 事前に計算したPCA座標（PCA配置の場合に使用、色計算と共通化）
+    """
 
     n = len(words)
     center_x = canvas_width / 2
@@ -287,14 +294,23 @@ def force_directed_layout(
     dist_matrix = 1 - sim_matrix
 
     max_dist = np.max(dist_matrix)
-    ideal_scale = min(canvas_width, canvas_height) * 0.35
+    ideal_scale = min(canvas_width, canvas_height) * 0.30
     ideal_distances = (dist_matrix / max_dist) * ideal_scale
 
-    # PCAで初期配置（異方性スケール適用）
-    if verbose:
-        print("  PCAで初期配置...")
-    pca = PCA(n_components=2)
-    initial_coords = pca.fit_transform(embeddings)
+    # 初期配置（異方性スケール適用）
+    if layout_method == 'mds':
+        if verbose:
+            print("  MDSで初期配置...")
+        mds = MDS(n_components=2, dissimilarity='precomputed', random_state=seed, normalized_stress='auto')
+        initial_coords = mds.fit_transform(dist_matrix)
+    else:
+        if verbose:
+            print("  PCAで初期配置...")
+        if pca_coords is not None:
+            initial_coords = pca_coords.copy()
+        else:
+            pca = PCA(n_components=2)
+            initial_coords = pca.fit_transform(embeddings)
     initial_coords[:, 0] -= initial_coords[:, 0].mean()
     initial_coords[:, 1] -= initial_coords[:, 1].mean()
 
@@ -304,8 +320,8 @@ def force_directed_layout(
         word.y = center_y + initial_coords[i, 1] * scale * scale_y
         word.vx = 0
         word.vy = 0
-        # 5文字以上の単語は回転させない（長い単語の回転はレイアウトを崩しやすい）
-        if len(word.text) >= 5:
+        # 4文字以上の単語は回転させない（長い単語の回転はレイアウトを崩しやすい）
+        if len(word.text) >= 4:
             word.rotation = 0
         else:
             word.rotation = random.choice([0]*9 + [90])
@@ -369,7 +385,7 @@ def force_directed_layout(
         count = 0
         for i in range(n):
             for j in range(i + 1, n):
-                if words[i].overlaps(words[j], padding=2):
+                if words[i].overlaps(words[j], padding=1):
                     count += 1
         return count
 
@@ -413,7 +429,7 @@ def force_directed_layout(
         improved = False
         for i in range(n):
             for j in range(i + 1, n):
-                if words[i].overlaps(words[j], padding=3):
+                if words[i].overlaps(words[j], padding=1):
                     dx = words[i].x - words[j].x
                     dy = words[i].y - words[j].y
                     dist = max(np.sqrt(dx*dx + dy*dy), 0.1)
@@ -432,17 +448,24 @@ def force_directed_layout(
         if not improved:
             break
 
+    final_overlaps = count_overlaps()
     if verbose:
-        print(f"  完了: 最終重なり={count_overlaps()}")
+        print(f"  完了: 最終重なり={final_overlaps}")
 
-    return words
+    return words, final_overlaps
 
 
-def compute_semantic_colors(words: list[Word]) -> list[tuple]:
-    """埋め込みに基づいて色を計算（色相環）"""
-    embeddings = np.array([w.embedding for w in words])
-    pca = PCA(n_components=2)
-    coords_2d = pca.fit_transform(embeddings)
+def compute_semantic_colors(words: list[Word], pca_coords: np.ndarray = None) -> list[tuple]:
+    """埋め込みに基づいて色を計算（色相環）
+
+    pca_coords: 事前に計算したPCA座標（省略時は内部で計算）
+    """
+    if pca_coords is None:
+        embeddings = np.array([w.embedding for w in words])
+        pca = PCA(n_components=2)
+        coords_2d = pca.fit_transform(embeddings)
+    else:
+        coords_2d = pca_coords
 
     colors = []
     max_dist = np.max(np.sqrt(coords_2d[:, 0]**2 + coords_2d[:, 1]**2))
@@ -503,6 +526,8 @@ def main():
     parser.add_argument('--cache-words', type=int, default=200, help='キャッシュする単語数（表示数より多めに）')
     parser.add_argument('--iterations', type=int, default=500)
     parser.add_argument('--seed', type=int, default=None, help='ランダムシード（再現性確保用）')
+    parser.add_argument('--layout-method', choices=['pca', 'mds'], default='pca',
+                        help='初期配置の方法（pca: 主成分分析, mds: 多次元尺度構成法）')
     parser.add_argument('--api-key', help='OpenAI APIキー')
     args = parser.parse_args()
 
@@ -573,49 +598,70 @@ def main():
         word_ratios[w] = ratio
         words.append(Word(w, freq, font_size, embeddings[i]))
 
-    # 単語リストをCSV出力（画像と同じベース名で自動出力）
+    # PCA座標を計算（配置と色で共通使用）
+    word_embeddings = np.array([w.embedding for w in words])
+    pca = PCA(n_components=2)
+    pca_coords = pca.fit_transform(word_embeddings)
+
+    print(f"レイアウト実行中... (初期配置: {args.layout_method.upper()})")
+    words, final_overlaps = force_directed_layout(words, canvas_width=1200, canvas_height=900, iterations=args.iterations,
+                                  layout_method=args.layout_method, seed=args.seed, pca_coords=pca_coords)
+
+    # 色を計算（PCA座標を再利用）
+    colors = compute_semantic_colors(words, pca_coords=pca_coords)
+
+    render_wordcloud(words, args.output, canvas_width=1200, canvas_height=900)
+
+    # 単語リストをCSV出力（レイアウト後、座標・色情報を含む）
     import csv
-    import os
     csv_path = args.export_words if args.export_words else os.path.splitext(args.output)[0] + '.csv'
-    # 正規化値で降順ソート
-    sorted_words = sorted(top_words, key=lambda w: word_ratios[w], reverse=True)
+
     with open(csv_path, 'w', encoding='utf-8-sig', newline='') as f:  # BOM付きUTF-8
         writer = csv.writer(f)
-        writer.writerow(['単語', '出現回数', '正規化値', 'フォントサイズ', 'カスタム', '頻度計算値', '差分'])
-        for w in sorted_words:
-            freq = top_freqs[w]
-            ratio = word_ratios[w]
-            font_size = 12 + 28 * (ratio ** 0.5)
-            is_custom = 'Yes' if w in custom_ratios else ''
-            # 頻度から計算した場合の値
-            if max_freq > min_freq:
-                freq_ratio = (freq - min_freq) / (max_freq - min_freq)
-            else:
-                freq_ratio = 0.5
-            # 差分（カスタム値 - 頻度計算値）
-            diff = ratio - freq_ratio if w in custom_ratios else ''
-            freq_ratio_str = f'{freq_ratio:.3f}'
-            diff_str = f'{diff:+.3f}' if diff != '' else ''
-            writer.writerow([w, freq, f'{ratio:.3f}', f'{font_size:.1f}', is_custom, freq_ratio_str, diff_str])
+
+        # メタ情報
+        writer.writerow(['# メタ情報'])
+        writer.writerow(['出力日時', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+        writer.writerow(['シード', args.seed if args.seed is not None else '(なし)'])
+        writer.writerow(['入力ファイル', args.input if args.input else '(なし)'])
+        writer.writerow(['カスタム単語ファイル', args.custom_words if args.custom_words else '(なし)'])
+        writer.writerow(['単語数', len(words)])
+        writer.writerow(['レイアウト方法', args.layout_method.upper()])
+        writer.writerow(['反復回数', args.iterations])
+        writer.writerow(['最終重なり数', final_overlaps])
+        writer.writerow([])  # 空行
+
+        # 単語データヘッダー
+        writer.writerow(['単語', '出現回数', '正規化値', 'フォントサイズ', 'カスタム', 'X座標', 'Y座標', 'R', 'G', 'B'])
+
+        # 単語をフォントサイズ（正規化値）の降順でソート
+        word_color_map = {w.text: colors[i] for i, w in enumerate(words)}
+        sorted_word_objects = sorted(words, key=lambda w: w.font_size, reverse=True)
+
+        for w in sorted_word_objects:
+            freq = top_freqs.get(w.text, 0)
+            ratio = word_ratios.get(w.text, 0)
+            is_custom = 'Yes' if w.text in custom_ratios else ''
+            color = word_color_map[w.text]
+            r, g, b = int(color[0]*255), int(color[1]*255), int(color[2]*255)
+            writer.writerow([w.text, freq, f'{ratio:.3f}', f'{w.font_size:.1f}', is_custom,
+                           f'{w.x:.1f}', f'{w.y:.1f}', r, g, b])
 
         # カスタムストップワード（除外単語）を追加
         custom_stopwords_file = Path("stopwords.txt")
         if custom_stopwords_file.exists():
             writer.writerow([])  # 空行
+            writer.writerow(['# 除外単語'])
             excluded_words = []
             with open(custom_stopwords_file, 'r', encoding='utf-8') as sf:
                 for line in sf:
                     line = line.strip()
                     if line and not line.startswith('#'):
                         excluded_words.append(line)
-            for w in excluded_words:
-                writer.writerow([w, '', '', '', 'exclude', '', ''])
+            for ew in excluded_words:
+                writer.writerow([ew, '', '', '', 'exclude', '', '', '', '', ''])
+
     print(f"単語リストを出力しました: {csv_path}")
-
-    print("レイアウト実行中...")
-    words = force_directed_layout(words, canvas_width=1200, canvas_height=900, iterations=args.iterations)
-
-    render_wordcloud(words, args.output, canvas_width=1200, canvas_height=900)
 
 
 if __name__ == '__main__':
