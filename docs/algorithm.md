@@ -723,30 +723,33 @@ def compute_semantic_colors(words: list[Word]) -> list[tuple]:
 | `--cache-words` | 200 | キャッシュする単語数 |
 | `--iterations` | 500 | シミュレーション反復回数 |
 | `--seed` | None | ランダムシード |
-| `-o, --output` | semantic_wordcloud.png | 出力ファイル名 |
+| `--layout-method` | pca | 初期配置の方法（pca/mds） |
+| `--pptx-scale` | 1.0 | PPTXスライドのスケール（例: 0.5で半分のサイズ） |
+| `-o, --output` | WordCloud_YYYYMMDD.png | 出力ファイル名 |
 
 ### 内部パラメータ
 
 ```python
 # force_directed_layout 内
 attraction_strength = 0.01   # スプリングの強さ
-repulsion_strength = 700     # 反発力の強さ
+repulsion_strength = 600     # 反発力の強さ
 damping = 0.9                # 減衰係数
 
 # 重なり解消パラメータ
-padding = 3                  # 重なり検出のパディング
-nudge = 3.5                  # 重なり解消時の移動量
-overlap_iterations = 150     # 重なり解消の反復回数
+padding = 1                  # 重なり検出のパディング
+nudge = 4.0                  # 重なり解消時の移動量
+overlap_iterations = 300     # 重なり解消の反復回数
 
 # 回転制限
-# 5文字以上の単語は回転させない（長い単語の回転はレイアウトを崩しやすい）
+# 4文字以上の単語は回転させない（長い単語の回転はレイアウトを崩しやすい）
 
 # キャンバス
 canvas_width = 1200
 canvas_height = 900
+FIGSIZE_DIVISOR = 120        # figsize = (1200/120, 900/120) = (10", 7.5")
 
 # フォントサイズ
-font_size = 12 + 28 * (ratio ** 0.5)  # 12〜40の範囲
+font_size = 8 + 19 * (ratio ** 0.5)  # 8〜27の範囲
 ```
 
 ### パラメータ調整のヒント

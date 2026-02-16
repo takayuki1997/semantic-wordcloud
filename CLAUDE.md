@@ -31,6 +31,7 @@ python semantic_wordcloud.py "研究内容と研究キーワード.xlsx" --custo
 - `--iterations NUM`: レイアウト反復回数（デフォルト: 500）
 - `--seed NUM`: ランダムシード（再現性確保）
 - `--layout-method pca|mds`: 初期配置の方法（デフォルト: pca）
+- `--pptx-scale NUM`: PPTXスライドのスケール（デフォルト: 1.0、例: 0.5で半分）
 
 ## 主要ファイル
 
@@ -47,7 +48,10 @@ python semantic_wordcloud.py "研究内容と研究キーワード.xlsx" --custo
 実行すると以下が生成されます:
 - `WordCloud_YYYYMMDD.png` - ワードクラウド画像（PNG）
 - `WordCloud_YYYYMMDD.svg` - ワードクラウド画像（SVG、フォントはパスに変換済み）
+- `WordCloud_YYYYMMDD.pptx` - ワードクラウド（PowerPoint、各単語が個別テキストボックス）
 - `WordCloud_YYYYMMDD.csv` - 単語リスト（自動出力、末尾に除外単語も記載）
+
+フォントは游ゴシック（YuGothic Bold）を使用。Mac/Windows両対応。
 
 ## レイアウトパラメータ
 
@@ -57,10 +61,12 @@ python semantic_wordcloud.py "研究内容と研究キーワード.xlsx" --custo
 |-----------|--------|------|
 | `canvas_width` | 1200 | キャンバス幅 |
 | `canvas_height` | 900 | キャンバス高さ |
-| `repulsion_strength` | 700 | 単語間の反発力 |
-| `ideal_scale` | 0.30 | 初期配置のスケール係数 |
+| `FIGSIZE_DIVISOR` | 120 | figsize計算用除数（1200/120=10", 900/120=7.5"） |
+| `repulsion_strength` | 600 | 単語間の反発力 |
+| `ideal_scale` | 0.23 | 初期配置のスケール係数 |
 | `padding` | 1 | 重なり検出のパディング |
-| `nudge` | 3.5 | 重なり解消時の移動量 |
+| `nudge` | 4.0 | 重なり解消時の移動量 |
+| フォントサイズ | 8〜27pt | `8 + 19 * (ratio ** 0.5)` |
 | 回転制限 | 4文字以上 | 長い単語は回転させない |
 
 ## API キー
@@ -93,6 +99,7 @@ python docs/generate_pdf.py
 - `custom_words.txt` - カスタム単語（大学固有の情報を含む）
 - `stopwords.txt` - 除外単語（大学固有の情報を含む）
 - `*.csv` - 出力CSV
+- `*.pptx` - 出力PowerPoint
 - `embeddings_cache.json` - 埋め込みキャッシュ
 - `stopwords_cache.json` - ストップワードキャッシュ
 

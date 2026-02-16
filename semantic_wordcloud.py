@@ -28,9 +28,17 @@ matplotlib.rcParams['svg.fonttype'] = 'path'
 
 
 FONT_PATHS = [
+    # フォールバック用（游ゴシックが見つからない場合）
     "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc",
     "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
 ]
+
+# PPTX用フォント名（Mac/Windows共通）
+PPTX_FONT_NAME = "游ゴシック"
+
+# figsize計算用の除数（キャンバスサイズ÷この値=インチ）
+# 1200/120=10", 900/120=7.5" → 4:3標準スライドと一致
+FIGSIZE_DIVISOR = 120
 
 # 日本語ストップワード（stopwords-iso）
 JAPANESE_STOPWORDS_URL = "https://raw.githubusercontent.com/stopwords-iso/stopwords-ja/master/stopwords-ja.txt"
@@ -119,18 +127,20 @@ class Word:
 
     @property
     def width(self) -> float:
-        char_width = self.font_size * 1.0
+        # 1文字の幅: font_size(pt) × FIGSIZE_DIVISOR/72 でデータ単位に変換
+        char_width = self.font_size * FIGSIZE_DIVISOR / 72
         if self.rotation == 0:
             return len(self.text) * char_width
         else:
-            return self.font_size * 1.2
+            return char_width * 1.2
 
     @property
     def height(self) -> float:
+        char_width = self.font_size * FIGSIZE_DIVISOR / 72
         if self.rotation == 0:
-            return self.font_size * 1.2
+            return char_width * 1.2
         else:
-            return len(self.text) * self.font_size * 1.0
+            return len(self.text) * char_width
 
     def get_bbox(self) -> tuple:
         half_w = self.width / 2
@@ -145,6 +155,17 @@ class Word:
 
 
 def get_font_path() -> str:
+    # 游ゴシック Bold を優先的に検索（Mac/Windows両対応）
+    try:
+        yu_gothic = font_manager.findfont(
+            font_manager.FontProperties(family='YuGothic', weight='bold'),
+            fallback_to_default=False
+        )
+        if yu_gothic:
+            return yu_gothic
+    except Exception:
+        pass
+    # フォールバック: ヒラギノ角ゴシック
     for fp in FONT_PATHS:
         if Path(fp).exists():
             return fp
@@ -294,7 +315,7 @@ def force_directed_layout(
     dist_matrix = 1 - sim_matrix
 
     max_dist = np.max(dist_matrix)
-    ideal_scale = min(canvas_width, canvas_height) * 0.30
+    ideal_scale = min(canvas_width, canvas_height) * 0.23
     ideal_distances = (dist_matrix / max_dist) * ideal_scale
 
     # 初期配置（異方性スケール適用）
@@ -331,11 +352,11 @@ def force_directed_layout(
         print("  Force-directed simulation...")
 
     attraction_strength = 0.01
-    repulsion_strength = 700
+    repulsion_strength = 600
     damping = 0.9
 
     # 反発力計算用の固定サイズ（配置を意味のみで決定するため）
-    fixed_word_size = 50  # 全単語を同じサイズとして扱う
+    fixed_word_size = 50
 
     def compute_forces():
         forces = np.zeros((n, 2))
@@ -425,7 +446,7 @@ def force_directed_layout(
         word.x, word.y = best_positions[i]
 
     # 最終重なり解消
-    for _ in range(150):
+    for _ in range(300):
         improved = False
         for i in range(n):
             for j in range(i + 1, n):
@@ -433,7 +454,7 @@ def force_directed_layout(
                     dx = words[i].x - words[j].x
                     dy = words[i].y - words[j].y
                     dist = max(np.sqrt(dx*dx + dy*dy), 0.1)
-                    nudge = 3.5
+                    nudge = 4.0
                     words[i].x += (dx / dist) * nudge
                     words[i].y += (dy / dist) * nudge
                     words[j].x -= (dx / dist) * nudge
@@ -484,7 +505,7 @@ def render_wordcloud(words: list[Word], output_path: str, canvas_width: float = 
     font_path = get_font_path()
     font_prop = font_manager.FontProperties(fname=font_path) if font_path else None
 
-    fig, ax = plt.subplots(figsize=(canvas_width/80, canvas_height/80))
+    fig, ax = plt.subplots(figsize=(canvas_width/FIGSIZE_DIVISOR, canvas_height/FIGSIZE_DIVISOR))
     ax.set_xlim(0, canvas_width)
     ax.set_ylim(0, canvas_height)
     ax.set_aspect('equal')
@@ -515,6 +536,70 @@ def render_wordcloud(words: list[Word], output_path: str, canvas_width: float = 
     plt.close()
 
 
+def export_pptx(words: list[Word], colors: list[tuple], output_path: str,
+                canvas_width: float = 1200, canvas_height: float = 900, scale: float = 1.0):
+    """ワードクラウドをPowerPointファイルとして出力（各単語が個別テキストボックス）"""
+    from pptx import Presentation
+    from pptx.util import Emu, Pt
+    from pptx.dml.color import RGBColor
+    from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+
+    prs = Presentation()
+    # スライドサイズをmatplotlibのfigsizeに一致させ、scaleを適用
+    fig_width_inch = canvas_width / FIGSIZE_DIVISOR * scale
+    fig_height_inch = canvas_height / FIGSIZE_DIVISOR * scale
+    prs.slide_width = Emu(int(fig_width_inch * 914400))
+    prs.slide_height = Emu(int(fig_height_inch * 914400))
+
+    slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
+
+    # 座標変換: スライド全体にフィット（scaleで座標とフォントサイズも連動）
+    emu_per_px = prs.slide_width.emu / canvas_width
+
+    for i, word in enumerate(words):
+        scaled_font_size = word.font_size * scale
+
+        # テキストボックスサイズ（EMU）
+        if word.rotation == 90:
+            box_w = word.height * emu_per_px * 1.2
+            box_h = word.width * emu_per_px * 1.2
+        else:
+            box_w = word.width * emu_per_px * 1.2
+            box_h = word.height * emu_per_px * 1.2
+
+        # 中心座標（Y軸反転: matplotlib下→上、PPTX上→下）
+        cx = word.x * emu_per_px
+        cy = (canvas_height - word.y) * emu_per_px
+
+        # 左上座標に変換
+        left = int(cx - box_w / 2)
+        top = int(cy - box_h / 2)
+
+        txBox = slide.shapes.add_textbox(Emu(left), Emu(top), Emu(int(box_w)), Emu(int(box_h)))
+
+        tf = txBox.text_frame
+        tf.word_wrap = False
+        tf.auto_size = None
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+
+        p = tf.paragraphs[0]
+        p.alignment = PP_ALIGN.CENTER
+        run = p.add_run()
+        run.text = word.text
+        run.font.size = Pt(scaled_font_size)
+        run.font.name = PPTX_FONT_NAME
+        run.font.bold = True
+
+        r, g, b = int(colors[i][0] * 255), int(colors[i][1] * 255), int(colors[i][2] * 255)
+        run.font.color.rgb = RGBColor(r, g, b)
+
+        if word.rotation == 90:
+            txBox.rotation = 270.0
+
+    prs.save(output_path)
+    print(f"保存しました: {output_path}")
+
+
 def main():
     parser = argparse.ArgumentParser(description='意味的ワードクラウド（キーワードのみ）')
     parser.add_argument('input', nargs='?', help='入力ファイル（テキスト/Excel）')
@@ -529,6 +614,8 @@ def main():
     parser.add_argument('--layout-method', choices=['pca', 'mds'], default='pca',
                         help='初期配置の方法（pca: 主成分分析, mds: 多次元尺度構成法）')
     parser.add_argument('--api-key', help='OpenAI APIキー')
+    parser.add_argument('--pptx-scale', type=float, default=1.0,
+                        help='PPTXスライドのスケール（例: 0.5で半分のサイズ）')
     args = parser.parse_args()
 
     if not args.input and not args.custom_words:
@@ -594,7 +681,7 @@ def main():
                 ratio = (freq - min_freq) / (max_freq - min_freq)
             else:
                 ratio = 0.5
-        font_size = 12 + 28 * (ratio ** 0.5)
+        font_size = 8 + 19 * (ratio ** 0.5)
         word_ratios[w] = ratio
         words.append(Word(w, freq, font_size, embeddings[i]))
 
@@ -611,6 +698,10 @@ def main():
     colors = compute_semantic_colors(words, pca_coords=pca_coords)
 
     render_wordcloud(words, args.output, canvas_width=1200, canvas_height=900)
+
+    # PPTX出力（各単語が個別テキストボックス）
+    pptx_path = os.path.splitext(args.output)[0] + '.pptx'
+    export_pptx(words, colors, pptx_path, canvas_width=1200, canvas_height=900, scale=args.pptx_scale)
 
     # 単語リストをCSV出力（レイアウト後、座標・色情報を含む）
     import csv
