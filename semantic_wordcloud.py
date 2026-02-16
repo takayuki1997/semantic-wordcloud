@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""v6: キーワードのみの意味的ワードクラウド（高次元距離制約）"""
+"""v7: PPTX出力対応・游ゴシック統一"""
 
 import argparse
 import os
