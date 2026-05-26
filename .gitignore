@@ -40,3 +40,6 @@ embeddings_cache.json
 stopwords_cache.json
 words.csv
 archive/
+
+# 発表・参考資料（大学公式広報物等、ローカル参照用）
+references/
