@@ -6,8 +6,8 @@
 |------|------|
 | 作成者 | 荻 多加之 |
 | 作成支援 | Claude Code (Anthropic) |
-| バージョン | 1.3 |
-| 最終更新 | 2026-02-10 |
+| バージョン | 1.6 |
+| 最終更新 | 2026-05-28 |
 
 ![サンプル出力](examples/sample_output.png)
 
@@ -39,7 +39,7 @@ export OPENAI_API_KEY="your-api-key"
 python semantic_wordcloud.py input.txt -o output.png
 ```
 
-画像と同名のCSVファイル（単語リスト）およびSVGファイルも自動出力されます。
+画像と同名のSVG・PPTX（PowerPoint）・CSV（単語リスト）ファイルも自動出力されます。
 
 ### オプション
 
@@ -53,6 +53,7 @@ python semantic_wordcloud.py input.txt -o output.png
 | `--iterations` | 500 | レイアウト反復回数 |
 | `--seed` | None | ランダムシード（再現性確保） |
 | `--layout-method` | pca | 初期配置の方法（pca/mds） |
+| `--pptx-scale` | 1.0 | PPTXスライドのスケール（例: 0.5で半分） |
 | `--api-key` | 環境変数 | OpenAI APIキー |
 
 ### 例
@@ -126,9 +127,10 @@ CSVには以下の情報が含まれます：
 
 - PNG画像（ラスター形式）
 - SVG画像（ベクター形式、フォントはパスに変換済み）
+- PPTX（PowerPoint、各単語が個別のテキストボックス）
 - CSVファイル（単語リスト）
 
-SVGはPowerPoint/Wordに直接挿入でき、拡大縮小しても劣化しません。
+SVGはPowerPoint/Wordに直接挿入でき、拡大縮小しても劣化しません。PPTXは各単語が個別のテキストボックスとして配置されるため、PowerPoint上で個別に編集・移動できます。
 
 ## カスタマイズ
 
