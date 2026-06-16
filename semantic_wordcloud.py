@@ -188,7 +188,8 @@ def load_text_from_excel(excel_path: str) -> str:
     xlsx = pd.ExcelFile(excel_path)
     all_text = []
     for sheet_name in xlsx.sheet_names:
-        df = pd.read_excel(xlsx, sheet_name=sheet_name)
+        # header=None: 先頭行をヘッダー扱いせず、全セルを一律にテキストとして処理する
+        df = pd.read_excel(xlsx, sheet_name=sheet_name, header=None)
         for col in df.columns:
             for value in df[col].dropna():
                 if isinstance(value, str):
